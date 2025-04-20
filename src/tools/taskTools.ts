@@ -17,8 +17,11 @@ import {
 } from "../models/taskModel.js";
 import {
   TaskStatus,
+  TaskStatusDescriptor,
   TaskComplexityLevel,
+  TaskComplexityLevelDescriptor,
   RelatedFileType,
+  RelatedFileTypeDescriptor,
   RelatedFile,
   Task,
   TaskDependency,
@@ -475,9 +478,16 @@ export async function splitTasks({
 }
 
 export const listTasksSchema = z.object({
-  status: z
-    .enum(["all", "pending", "in_progress", "completed"])
-    .describe("要列出的任務狀態，可選擇 'all' 列出所有任務，或指定具體狀態"),
+  status: TaskStatusDescriptor.generateSchema({
+    // valueMapping: {
+    //   PENDING: "pending",
+    //   IN_PROGRESS: "in_progress",
+    //   COMPLETED: "completed"
+    // },
+    extraValues: {
+      "all": "列出所有任務"
+    }
+  })//.describe("要列出的任務狀態，可選擇 'all' 列出所有任務，或指定具體狀態"),
 });
 
 // 列出任務工具
@@ -972,7 +982,10 @@ export const updateTaskContentSchema = z.object({
           .string()
           .min(1, { message: "文件路徑不能為空，請提供有效的文件路徑" })
           .describe("文件路徑，可以是相對於項目根目錄的路徑或絕對路徑"),
-        type: z.nativeEnum(RelatedFileType).describe("文件與任務的關係類型"),
+        type: RelatedFileTypeDescriptor.generateSchema()
+          //.describe("文件與任務的關係類型")
+          .transform((val) => val as RelatedFileType),
+          
         description: z.string().optional().describe("文件的補充描述（選填）"),
         lineStart: z
           .number()
@@ -1159,16 +1172,13 @@ export const updateTaskRelatedFilesSchema = z.object({
           .string()
           .min(1, { message: "文件路徑不能為空，請提供有效的文件路徑" })
           .describe("文件路徑，可以是相對於項目根目錄的路徑或絕對路徑"),
-        type: z
-          .enum([
-            RelatedFileType.TO_MODIFY,
-            RelatedFileType.REFERENCE,
-            RelatedFileType.CREATE,
-            RelatedFileType.DEPENDENCY,
-            RelatedFileType.OTHER,
-          ])
-          .describe("文件與任務的關係類型"),
-        description: z.string().optional().describe("文件的補充描述（選填）"),
+        type: RelatedFileTypeDescriptor.generateSchema()
+          //.describe("文件與任務的關係類型")
+          .transform((val) => val as RelatedFileType),
+        description: z
+          .string()
+          .optional()
+          .describe("文件的補充描述（選填）"),
         lineStart: z
           .number()
           .int()
@@ -1183,8 +1193,8 @@ export const updateTaskRelatedFilesSchema = z.object({
           .describe("相關代碼區塊的結束行（選填）"),
       })
     )
-    .min(1, { message: "至少需要提供一個相關文件，請確保文件列表不為空" })
-    .describe("與任務相關的文件列表"),
+    .min(1, { message: "至少需要提供一個相關文件" })
+    .describe("任務的相關文件列表"),
 });
 
 export async function updateTaskRelatedFiles({

@@ -573,7 +573,7 @@ export async function assessTaskComplexity(
   const hasNotes = !!task.notes;
 
   // 基於各項指標評估複雜度級別
-  let level = TaskComplexityLevel.LOW;
+  let level: TaskComplexityLevel = TaskComplexityLevel.LOW;
 
   // 描述長度評估
   if (

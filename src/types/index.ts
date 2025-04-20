@@ -1,24 +1,62 @@
 // 任務狀態枚舉：定義任務在工作流程中的當前階段
-export enum TaskStatus {
-  PENDING = "待處理", // 已創建但尚未開始執行的任務
-  IN_PROGRESS = "進行中", // 當前正在執行的任務
-  COMPLETED = "已完成", // 已成功完成並通過驗證的任務
-  BLOCKED = "被阻擋", // 由於依賴關係而暫時無法執行的任務
-}
+import { EnumDescriptor } from '../utils/enumDescriptor.js';
+
+/**
+ * 任務狀態枚舉：定義任務在工作流程中的當前階段
+ */
+export const TaskStatus = {
+  PENDING: "PENDING", // 已創建但尚未開始執行的任務
+  IN_PROGRESS: "IN_PROGRESS", // 當前正在執行的任務
+  COMPLETED: "COMPLETED", // 已成功完成並通過驗證的任務
+  BLOCKED: "BLOCKED", // 由於依賴關係而暫時無法執行的任務
+} as const;
+
+// 導出為聯合類型，用於類型檢查
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
+
+// 創建任務狀態描述符，用於生成帶有描述的Schema和UI顯示
+export const TaskStatusDescriptor = new EnumDescriptor(
+  TaskStatus,
+  "任務狀態",
+  {
+    [TaskStatus.PENDING]: "待處理，已創建但尚未開始執行的任務",
+    [TaskStatus.IN_PROGRESS]: "進行中，當前正在執行的任務",
+    [TaskStatus.COMPLETED]: "已完成，已成功完成並通過驗證的任務",
+    [TaskStatus.BLOCKED]: "被阻擋，由於依賴關係而暫時無法執行的任務"
+  }
+);
 
 // 任務依賴關係：定義任務之間的前置條件關係
 export interface TaskDependency {
   taskId: string; // 前置任務的唯一標識符，當前任務執行前必須完成此依賴任務
 }
 
-// 相關文件類型：定義文件與任務的關係類型
-export enum RelatedFileType {
-  TO_MODIFY = "待修改", // 需要在任務中修改的文件
-  REFERENCE = "參考資料", // 任務的參考資料或相關文檔
-  CREATE = "待建立", // 需要在任務中建立的文件
-  DEPENDENCY = "依賴文件", // 任務依賴的組件或庫文件
-  OTHER = "其他", // 其他類型的相關文件
-}
+/**
+ * 相關文件類型：定義文件與任務的關係類型
+ */
+export const RelatedFileType = {
+  TO_MODIFY: "TO_MODIFY", // 需要在任務中修改的文件
+  REFERENCE: "REFERENCE", // 任務的參考資料或相關文檔
+  CREATE: "CREATE", // 需要在任務中建立的文件
+  DEPENDENCY: "DEPENDENCY", // 任務依賴的組件或庫文件
+  OTHER: "OTHER", // 其他類型的相關文件
+} as const;
+
+// 導出為聯合類型，用於類型檢查
+export type RelatedFileType = typeof RelatedFileType[keyof typeof RelatedFileType];
+
+// 創建相關文件類型描述符，用於生成帶有描述的Schema和UI顯示
+export const RelatedFileTypeDescriptor = new EnumDescriptor(
+  RelatedFileType,
+  "相關文件類型",
+  {
+    [RelatedFileType.TO_MODIFY]: "待修改，需要在任務中修改的文件",
+    [RelatedFileType.REFERENCE]: "參考資料，任務的參考資料或相關文檔",
+    [RelatedFileType.CREATE]: "待建立，需要在任務中建立的文件",
+    [RelatedFileType.DEPENDENCY]: "依賴文件，任務依賴的組件或庫文件",
+    [RelatedFileType.OTHER]: "其他，其他類型的相關文件"
+  }
+);
 
 // 相關文件：定義任務相關的文件信息
 export interface RelatedFile {
@@ -119,13 +157,30 @@ export interface CompleteTaskArgs {
   summary?: string; // 任務完成摘要，簡潔描述實施結果和重要決策（選填，如未提供將自動生成）
 }
 
-// 任務複雜度級別：定義任務的複雜程度分類
-export enum TaskComplexityLevel {
-  LOW = "低複雜度", // 簡單且直接的任務，通常不需要特殊處理
-  MEDIUM = "中等複雜度", // 具有一定複雜性但仍可管理的任務
-  HIGH = "高複雜度", // 複雜且耗時的任務，需要特別關注
-  VERY_HIGH = "極高複雜度", // 極其複雜的任務，建議拆分處理
-}
+/**
+ * 任務複雜度級別：定義任務的複雜程度分類
+ */
+export const TaskComplexityLevel = {
+  LOW: "LOW", // 簡單且直接的任務，通常不需要特殊處理
+  MEDIUM: "MEDIUM", // 具有一定複雜性但仍可管理的任務
+  HIGH: "HIGH", // 複雜且耗時的任務，需要特別關注
+  VERY_HIGH: "VERY_HIGH", // 極其複雜的任務，建議拆分處理
+} as const;
+
+// 導出為聯合類型，用於類型檢查
+export type TaskComplexityLevel = typeof TaskComplexityLevel[keyof typeof TaskComplexityLevel];
+
+// 創建任務複雜度級別描述符，用於生成帶有描述的Schema和UI顯示
+export const TaskComplexityLevelDescriptor = new EnumDescriptor(
+  TaskComplexityLevel,
+  "任務複雜度級別",
+  {
+    [TaskComplexityLevel.LOW]: "低複雜度，簡單且直接的任務，通常不需要特殊處理",
+    [TaskComplexityLevel.MEDIUM]: "中等複雜度，具有一定複雜性但仍可管理的任務",
+    [TaskComplexityLevel.HIGH]: "高複雜度，複雜且耗時的任務，需要特別關注",
+    [TaskComplexityLevel.VERY_HIGH]: "極高複雜度，極其複雜的任務，建議拆分處理"
+  }
+);
 
 // 任務複雜度閾值：定義任務複雜度評估的參考標準
 export const TaskComplexityThresholds = {
