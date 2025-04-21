@@ -277,9 +277,8 @@ export const splitTasksSchema = z.object({
                   message: "文件路徑不能為空",
                 })
                 .describe("文件路徑，可以是相對於項目根目錄的路徑或絕對路徑"),
-              type: z
-                .enum(["待修改", "參考資料", "待建立", "依賴文件", "其他"])
-                .describe("文件類型，用於區分不同類型的文件"),
+              type: RelatedFileTypeDescriptor.generateSchema()
+                .transform((val) => val as RelatedFileType),
               description: z
                 .string()
                 .min(1, {
