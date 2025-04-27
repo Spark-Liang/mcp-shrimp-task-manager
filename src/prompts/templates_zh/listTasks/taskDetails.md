@@ -2,6 +2,8 @@
 
 **ID:** `{id}`
 
+**状态:** `{status}`
+
 **描述:** {description}
 
 {complatedSummary}

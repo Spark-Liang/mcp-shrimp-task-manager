@@ -28,6 +28,7 @@ import {
   generateTaskSummary,
 } from "../utils/summaryExtractor.js";
 import { loadTaskRelatedFiles } from "../utils/fileLoader.js";
+import { sortTasksByDependencies } from "../utils/taskSorter.js";
 // 導入prompt生成器
 import {
   getPlanTaskPrompt,
@@ -490,22 +491,24 @@ export const listTasksSchema = z.object({
 // 列出任務工具
 export async function listTasks({ status }: z.infer<typeof listTasksSchema>) {
   const tasks = await getAllTasks();
-  let filteredTasks = tasks;
+  // 對過濾後的任務進行依賴關係排序
+  const sortedTasks = sortTasksByDependencies(tasks);
+  let filteredTasks = sortedTasks;
   switch (status) {
     case "all":
       break;
     case "pending":
-      filteredTasks = tasks.filter(
+      filteredTasks = sortedTasks.filter(
         (task) => task.status === TaskStatus.PENDING
       );
       break;
     case "in_progress":
-      filteredTasks = tasks.filter(
+      filteredTasks = sortedTasks.filter(
         (task) => task.status === TaskStatus.IN_PROGRESS
       );
       break;
     case "completed":
-      filteredTasks = tasks.filter(
+      filteredTasks = sortedTasks.filter(
         (task) => task.status === TaskStatus.COMPLETED
       );
       break;
@@ -524,7 +527,7 @@ export async function listTasks({ status }: z.infer<typeof listTasksSchema>) {
     };
   }
 
-  const tasksByStatus = tasks.reduce((acc, task) => {
+  const tasksByStatus = filteredTasks.reduce((acc, task) => {
     if (!acc[task.status]) {
       acc[task.status] = [];
     }

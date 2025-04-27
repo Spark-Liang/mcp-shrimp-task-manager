@@ -2,6 +2,8 @@
 
 **ID:** `{id}`
 
+**Status:** `{status}`
+
 **Description:** {description}
 
 {complatedSummary}

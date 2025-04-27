@@ -76,6 +76,7 @@ export function getListTasksPrompt(params: ListTasksPromptParams): string {
         taskDetails += generatePrompt(taskDetailsTemplate, {
           name: task.name,
           id: task.id,
+          status: task.status,
           description: task.description,
           createAt: task.createdAt,
           complatedSummary:
