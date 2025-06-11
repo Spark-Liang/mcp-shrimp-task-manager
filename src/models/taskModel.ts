@@ -13,15 +13,47 @@ import { v4 as uuidv4 } from "uuid";
 import { fileURLToPath } from "url";
 import { exec } from "child_process";
 import { promisify } from "util";
+import YAML from "js-yaml";
 
 // 確保獲取專案資料夾路徑
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 
+// 確定任務檔案的儲存格式，預設為 JSON
+const TASK_FILE_FORMAT = (() => {
+  let format = (process.env.TASKS_FILE_FORMAT || "json").toLowerCase();
+  if (!["json", "yaml"].includes(format)) {
+    console.warn(
+      `[警告] 環境變量 TASKS_FILE_FORMAT 設定為 '${process.env.TASKS_FILE_FORMAT}', 但只支援 'json' 或 'yaml'。將使用預設 'json' 格式。`
+    );
+    format = "json"; // 在這裡重新賦值給局部的 let 變數
+  }
+  return format; // 返回最終確定的格式
+})();
+
 // 數據文件路徑
-const DATA_DIR = process.env.DATA_DIR || path.join(PROJECT_ROOT, "data");
-const TASKS_FILE = path.join(DATA_DIR, "tasks.json");
+const DATA_DIR = (() => {
+  // 優先檢查 WORKSPACE_DATA_DIR_SUB_PATH 環境變量
+  if (process.env.WORKSPACE_DATA_DIR_SUB_PATH) {
+    if (!process.env.WORKSPACE_FOLDER_PATHS) {
+      throw new Error(
+        "環境變量 WORKSPACE_DATA_DIR_SUB_PATH 已設置，但未設置 WORKSPACE_FOLDER_PATHS"
+      );
+    }
+    // 使用 path.delimiter 作為分隔符
+    const workspacePaths = process.env.WORKSPACE_FOLDER_PATHS.split(path.delimiter);
+    return path.resolve(
+      workspacePaths[0].trim(),
+      process.env.WORKSPACE_DATA_DIR_SUB_PATH
+    );
+  }
+  // 後備邏輯：使用原有 DATA_DIR 或默認路徑
+  return process.env.DATA_DIR || path.join(PROJECT_ROOT, "data");
+})();
+
+// 根據選定的格式確定任務檔案的完整路徑
+const TASKS_FILE = path.join(DATA_DIR, `tasks.${TASK_FILE_FORMAT}`);
 
 // 將exec轉換為Promise形式
 const execPromise = promisify(exec);
@@ -37,15 +69,56 @@ async function ensureDataDir() {
   try {
     await fs.access(TASKS_FILE);
   } catch (error) {
-    await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks: [] }));
+    // 根據檔案格式寫入初始內容
+    const initialContent =
+      TASK_FILE_FORMAT === "json" ?
+      JSON.stringify({ tasks: [] }, null, 2) :
+      YAML.dump({ tasks: [] }, { indent: 2, lineWidth: -1 }); // 多行字符串使用塊風格
+
+    await fs.writeFile(TASKS_FILE, initialContent);
   }
+}
+
+// 內部輔助函數：讀取任務檔案的原始數據
+async function readTasksFromFile(): Promise<{ tasks: any[] }> {
+  await ensureDataDir();
+  const data = await fs.readFile(TASKS_FILE, "utf-8");
+
+  if (TASK_FILE_FORMAT === "json") {
+    return JSON.parse(data);
+  } else if (TASK_FILE_FORMAT === "yaml") {
+    return YAML.load(data) as { tasks: any[] };
+  } else {
+    // 理論上在 TASK_FILE_FORMAT 定義時已處理不支援的格式
+    throw new Error(`不支援的任務檔案格式: ${TASK_FILE_FORMAT}`);
+  }
+}
+
+// 內部輔助函數：將任務數據寫入檔案
+async function writeTasksToFile(tasksData: { tasks: Task[] }): Promise<void> {
+  await ensureDataDir();
+  let serializedData: string;
+
+  if (TASK_FILE_FORMAT === "json") {
+    serializedData = JSON.stringify(tasksData, null, 2);
+  } else if (TASK_FILE_FORMAT === "yaml") {
+    // 使用 YAML.dump 序列化，確保多行字符串自動使用塊風格
+    serializedData = YAML.dump(tasksData, {
+      indent: 2,
+      lineWidth: -1, // 不限制行寬，避免自動折行
+      schema: YAML.DEFAULT_SCHEMA,
+    });
+  } else {
+    // 理論上在 TASK_FILE_FORMAT 定義時已處理不支援的格式
+    throw new Error(`不支援的任務檔案格式: ${TASK_FILE_FORMAT}`);
+  }
+  await fs.writeFile(TASKS_FILE, serializedData);
 }
 
 // 讀取所有任務
 async function readTasks(): Promise<Task[]> {
-  await ensureDataDir();
-  const data = await fs.readFile(TASKS_FILE, "utf-8");
-  const tasks = JSON.parse(data).tasks;
+  const data = await readTasksFromFile();
+  const tasks = data.tasks;
 
   // 將日期字串轉換回 Date 物件
   return tasks.map((task: any) => ({
@@ -58,8 +131,7 @@ async function readTasks(): Promise<Task[]> {
 
 // 寫入所有任務
 async function writeTasks(tasks: Task[]): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks }, null, 2));
+  await writeTasksToFile({ tasks });
 }
 
 // 獲取所有任務
@@ -694,7 +766,8 @@ export async function clearAllTasks(): Promise<{
       .toISOString()
       .replace(/:/g, "-")
       .replace(/\..+/, "");
-    const backupFileName = `tasks_memory_${timestamp}.json`;
+    // 備份文件也使用當前配置的格式
+    const backupFileName = `tasks_memory_${timestamp}.${TASK_FILE_FORMAT}`;
 
     // 確保 memory 目錄存在
     const MEMORY_DIR = path.join(DATA_DIR, "memory");
@@ -708,13 +781,10 @@ export async function clearAllTasks(): Promise<{
     const memoryFilePath = path.join(MEMORY_DIR, backupFileName);
 
     // 同時寫入到 memory 目錄 (只包含已完成的任務)
-    await fs.writeFile(
-      memoryFilePath,
-      JSON.stringify({ tasks: completedTasks }, null, 2)
-    );
+    await writeTasksToFile({ tasks: completedTasks }); // 使用統一的寫入函數到臨時文件
 
     // 清空任務文件
-    await writeTasks([]);
+    await writeTasks([]); // 使用統一的寫入函數
 
     return {
       success: true,
@@ -758,7 +828,8 @@ export async function searchTasksWithCommand(
     await fs.access(MEMORY_DIR);
 
     // 生成搜尋命令
-    const cmd = generateSearchCommand(query, isId, MEMORY_DIR);
+    // 搜尋命令現在需要根據 TASK_FILE_FORMAT 來指定搜尋 *.json 或 *.yaml
+    const cmd = generateSearchCommand(query, isId, MEMORY_DIR, TASK_FILE_FORMAT);
 
     // 如果有搜尋命令，執行它
     if (cmd) {
@@ -792,7 +863,18 @@ export async function searchTasksWithCommand(
           for (const filePath of sortedFiles) {
             try {
               const data = await fs.readFile(filePath, "utf-8");
-              const tasks = JSON.parse(data).tasks || [];
+              let parsedData: { tasks: any[] };
+
+              // 根據檔案擴展名判斷解析方式
+              if (filePath.endsWith(".json")) {
+                parsedData = JSON.parse(data);
+              } else if (filePath.endsWith(".yaml")) {
+                parsedData = YAML.load(data) as { tasks: any[] };
+              } else {
+                continue; // 跳過不支援的檔案類型
+              }
+
+              const tasks = parsedData.tasks || [];
 
               // 格式化日期字段
               const formattedTasks = tasks.map((task: any) => ({
@@ -901,40 +983,40 @@ export async function searchTasksWithCommand(
 function generateSearchCommand(
   query: string,
   isId: boolean,
-  memoryDir: string
+  memoryDir: string,
+  fileFormat: string // 新增參數：檔案格式
 ): string {
   // 安全地轉義用戶輸入
   const safeQuery = escapeShellArg(query);
-  const keywords = safeQuery.split(/\s+/).filter((k) => k.length > 0);
+  const keywords = safeQuery.split(/\s+/)
+    .filter((k) => k.length > 0);
+
+  // 確定要搜尋的檔案擴展名
+  const fileExtension = `*.${fileFormat}`;
 
   // 檢測操作系統類型
   const isWindows = process.platform === "win32";
 
   if (isWindows) {
-    // Windows環境，使用findstr命令
-    if (isId) {
-      // ID搜尋
-      return `findstr /s /i /c:"${safeQuery}" "${memoryDir}\\*.json"`;
-    } else if (keywords.length === 1) {
-      // 單一關鍵字
-      return `findstr /s /i /c:"${safeQuery}" "${memoryDir}\\*.json"`;
+    // Windows環境，使用findstr命令或PowerShell
+    if (isId || keywords.length === 1) {
+      // 單一關鍵字或ID搜尋
+      return `findstr /s /i /c:"${safeQuery}" "${memoryDir}\\${fileExtension}"`;
     } else {
       // 多關鍵字搜尋 - Windows中使用PowerShell
       const keywordPatterns = keywords.map((k) => `'${k}'`).join(" -and ");
-      return `powershell -Command "Get-ChildItem -Path '${memoryDir}' -Filter *.json -Recurse | Select-String -Pattern ${keywordPatterns} | ForEach-Object { $_.Path }"`;
+      return `powershell -Command "Get-ChildItem -Path '${memoryDir}' -Filter ${fileExtension} -Recurse | Select-String -Pattern ${keywordPatterns} | ForEach-Object { $_.Path }"`;
     }
   } else {
     // Unix/Linux/MacOS環境，使用grep命令
-    if (isId) {
-      return `grep -r --include="*.json" "${safeQuery}" "${memoryDir}"`;
-    } else if (keywords.length === 1) {
-      return `grep -r --include="*.json" "${safeQuery}" "${memoryDir}"`;
+    if (isId || keywords.length === 1) {
+      return `grep -r --include="${fileExtension}" "${safeQuery}" "${memoryDir}"`;
     } else {
       // 多關鍵字用管道連接多個grep命令
       const firstKeyword = escapeShellArg(keywords[0]);
       const otherKeywords = keywords.slice(1).map((k) => escapeShellArg(k));
 
-      let cmd = `grep -r --include="*.json" "${firstKeyword}" "${memoryDir}"`;
+      let cmd = `grep -r --include="${fileExtension}" "${firstKeyword}" "${memoryDir}"`;
       for (const keyword of otherKeywords) {
         cmd += ` | grep "${keyword}"`;
       }
