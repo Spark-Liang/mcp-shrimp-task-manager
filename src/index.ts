@@ -14,6 +14,8 @@ import path from "path";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import { fileURLToPath } from "url";
+import { DATA_DIR } from "./models/pathUtils.js";
+import { getAllTasks, TASKS_FILE_PATH } from "./models/taskModel.js";
 
 // 導入所有工具函數和 schema
 import {
@@ -82,24 +84,17 @@ async function main() {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
       const publicPath = path.join(__dirname, "public");
-      const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-      const TASKS_FILE_PATH = path.join(DATA_DIR, "tasks.json"); // 提取檔案路徑
 
       app.use(express.static(publicPath));
 
       // 設置 API 路由
       app.get("/api/tasks", async (req: Request, res: Response) => {
         try {
-          // 使用 fsPromises 保持異步讀取
-          const tasksData = await fsPromises.readFile(TASKS_FILE_PATH, "utf-8");
-          res.json(JSON.parse(tasksData));
+          // 使用 getAllTasks 替代直接文件读取逻辑
+          const tasks = await getAllTasks();
+          res.json({ tasks });
         } catch (error) {
-          // 確保檔案不存在時返回空任務列表
-          if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-            res.json({ tasks: [] });
-          } else {
-            res.status(500).json({ error: "Failed to read tasks data" });
-          }
+          res.status(500).json({ error: "Failed to read tasks data" });
         }
       });
 

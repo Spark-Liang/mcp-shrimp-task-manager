@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { PROJECT_ROOT, DATA_DIR } from "../models/pathUtils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,16 +82,15 @@ export function generatePrompt(
  */
 export function loadPromptFromTemplate(templatePath: string): string {
   const templateSetName = process.env.TEMPLATES_USE || "en";
-  const dataDir = process.env.DATA_DIR;
-  const builtInTemplatesBaseDir = __dirname;
+  const builtInTemplatesBaseDir = path.join(PROJECT_ROOT, "src", "prompts");
 
   let finalPath = "";
   const checkedPaths: string[] = []; // 用於更詳細的錯誤報告
 
   // 1. 檢查 DATA_DIR 中的自定義路徑
-  if (dataDir) {
+  if (DATA_DIR) {
     // path.resolve 可以處理 templateSetName 是絕對路徑的情況
-    const customFilePath = path.resolve(dataDir, templateSetName, templatePath);
+    const customFilePath = path.resolve(DATA_DIR, templateSetName, templatePath);
     checkedPaths.push(`Custom: ${customFilePath}`);
     if (fs.existsSync(customFilePath)) {
       finalPath = customFilePath;

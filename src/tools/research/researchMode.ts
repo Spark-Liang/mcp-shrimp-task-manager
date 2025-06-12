@@ -1,7 +1,7 @@
 import { z } from "zod";
 import path from "path";
-import { fileURLToPath } from "url";
 import { getResearchModePrompt } from "../../prompts/index.js";
+import { DATA_DIR } from "../../models/pathUtils.js";
 
 // 研究模式工具
 export const researchModeSchema = z.object({
@@ -37,10 +37,10 @@ export async function researchMode({
   nextSteps,
 }: z.infer<typeof researchModeSchema>) {
   // 獲取基礎目錄路徑
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const PROJECT_ROOT = path.resolve(__dirname, "../../..");
-  const DATA_DIR = process.env.DATA_DIR || path.join(PROJECT_ROOT, "data");
+  // const __filename = fileURLToPath(import.meta.url);
+  // const __dirname = path.dirname(__filename);
+  // const PROJECT_ROOT = path.resolve(__dirname, "../../..");
+  // const DATA_DIR = process.env.DATA_DIR || path.join(PROJECT_ROOT, "data");
   const MEMORY_DIR = path.join(DATA_DIR, "memory");
 
   // 使用prompt生成器獲取最終prompt

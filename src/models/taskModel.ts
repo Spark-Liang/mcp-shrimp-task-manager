@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 import { exec } from "child_process";
 import { promisify } from "util";
 import YAML from "js-yaml";
+import { DATA_DIR } from "./pathUtils.js";
 
 // 確保獲取專案資料夾路徑
 const __filename = fileURLToPath(import.meta.url);
@@ -33,27 +34,10 @@ const TASK_FILE_FORMAT = (() => {
 })();
 
 // 數據文件路徑
-const DATA_DIR = (() => {
-  // 優先檢查 WORKSPACE_DATA_DIR_SUB_PATH 環境變量
-  if (process.env.WORKSPACE_DATA_DIR_SUB_PATH) {
-    if (!process.env.WORKSPACE_FOLDER_PATHS) {
-      throw new Error(
-        "環境變量 WORKSPACE_DATA_DIR_SUB_PATH 已設置，但未設置 WORKSPACE_FOLDER_PATHS"
-      );
-    }
-    // 使用 path.delimiter 作為分隔符
-    const workspacePaths = process.env.WORKSPACE_FOLDER_PATHS.split(path.delimiter);
-    return path.resolve(
-      workspacePaths[0].trim(),
-      process.env.WORKSPACE_DATA_DIR_SUB_PATH
-    );
-  }
-  // 後備邏輯：使用原有 DATA_DIR 或默認路徑
-  return process.env.DATA_DIR || path.join(PROJECT_ROOT, "data");
-})();
+// const DATA_DIR = (() => { ... })(); // 刪除此段 IIFE
 
 // 根據選定的格式確定任務檔案的完整路徑
-const TASKS_FILE = path.join(DATA_DIR, `tasks.${TASK_FILE_FORMAT}`);
+export const TASKS_FILE_PATH = path.join(DATA_DIR, `tasks.${TASK_FILE_FORMAT}`); // 導出並重命名
 
 // 將exec轉換為Promise形式
 const execPromise = promisify(exec);
@@ -63,11 +47,12 @@ async function ensureDataDir() {
   try {
     await fs.access(DATA_DIR);
   } catch (error) {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    // DATA_DIR 的創建已經在 pathUtils.ts 中處理，這裡不再需要創建目錄
+    // await fs.mkdir(DATA_DIR, { recursive: true }); // 刪除此行
   }
 
   try {
-    await fs.access(TASKS_FILE);
+    await fs.access(TASKS_FILE_PATH); // 使用新的 TASKS_FILE_PATH
   } catch (error) {
     // 根據檔案格式寫入初始內容
     const initialContent =
@@ -75,14 +60,14 @@ async function ensureDataDir() {
       JSON.stringify({ tasks: [] }, null, 2) :
       YAML.dump({ tasks: [] }, { indent: 2, lineWidth: -1 }); // 多行字符串使用塊風格
 
-    await fs.writeFile(TASKS_FILE, initialContent);
+    await fs.writeFile(TASKS_FILE_PATH, initialContent); // 使用新的 TASKS_FILE_PATH
   }
 }
 
 // 內部輔助函數：讀取任務檔案的原始數據
 async function readTasksFromFile(): Promise<{ tasks: any[] }> {
   await ensureDataDir();
-  const data = await fs.readFile(TASKS_FILE, "utf-8");
+  const data = await fs.readFile(TASKS_FILE_PATH, "utf-8");
 
   if (TASK_FILE_FORMAT === "json") {
     return JSON.parse(data);
@@ -112,7 +97,7 @@ async function writeTasksToFile(tasksData: { tasks: Task[] }): Promise<void> {
     // 理論上在 TASK_FILE_FORMAT 定義時已處理不支援的格式
     throw new Error(`不支援的任務檔案格式: ${TASK_FILE_FORMAT}`);
   }
-  await fs.writeFile(TASKS_FILE, serializedData);
+  await fs.writeFile(TASKS_FILE_PATH, serializedData);
 }
 
 // 讀取所有任務
