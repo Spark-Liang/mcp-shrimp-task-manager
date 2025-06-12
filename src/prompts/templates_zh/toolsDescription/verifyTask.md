@@ -1,7 +1,7 @@
 ## 驗證任務
 
-請根據 verificationCriteria 的要求來全面性檢查與評分，
-如果你缺失或遺忘 verificationCriteria 內容，請使用`get_task_detail`來取得。
+调用前必须使用`get_task_detail`來取得任务详情，并根據 verificationCriteria 的要求來全面性檢查與評分。
+
 
 請根據以下規則來評分：
 

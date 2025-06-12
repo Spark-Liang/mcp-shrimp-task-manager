@@ -1,7 +1,6 @@
 ## Verify Task
 
-Please comprehensively check and score according to the requirements in verificationCriteria,
-If you are missing or have forgotten the verificationCriteria content, please use `get_task_detail` to obtain it.
+Please use `get_task_detail` to obtain the task detail before calling this method, then check and score according to the requirements in verificationCriteria。
 
 Please score according to the following rules:
 
