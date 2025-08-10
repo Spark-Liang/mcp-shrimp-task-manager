@@ -9,3 +9,6 @@ export * from "./thought/index.js";
 
 // 導出所有研究工具
 export * from "./research/index.js";
+
+// 導出所有 Web 工具
+export * from "./web/index.js";

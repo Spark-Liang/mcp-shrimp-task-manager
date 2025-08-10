@@ -11,6 +11,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { setGlobalServer } from "./utils/paths.js";
 import { createWebServer } from "./web/webServer.js";
+import { getWebGuiFilePath } from "./utils/paths.js";
+import fs from "fs/promises";
 
 // 導入所有工具函數和 schema
 import {
@@ -46,6 +48,8 @@ import {
   initProjectRulesSchema,
   researchMode,
   researchModeSchema,
+  openWebGui,
+  openWebGuiSchema,
 } from "./tools/index.js";
 
 async function main() {
@@ -82,115 +86,143 @@ async function main() {
     }
 
     server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          {
-            name: "plan_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/planTask.md"
-            ),
-            inputSchema: zodToJsonSchema(planTaskSchema),
-          },
-          {
-            name: "analyze_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/analyzeTask.md"
-            ),
-            inputSchema: zodToJsonSchema(analyzeTaskSchema),
-          },
-          {
-            name: "reflect_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/reflectTask.md"
-            ),
-            inputSchema: zodToJsonSchema(reflectTaskSchema),
-          },
-          {
-            name: "split_tasks",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/splitTasks.md"
-            ),
-            inputSchema: zodToJsonSchema(splitTasksRawSchema),
-          },
-          {
-            name: "list_tasks",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/listTasks.md"
-            ),
-            inputSchema: zodToJsonSchema(listTasksSchema),
-          },
-          {
-            name: "execute_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/executeTask.md"
-            ),
-            inputSchema: zodToJsonSchema(executeTaskSchema),
-          },
-          {
-            name: "verify_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/verifyTask.md"
-            ),
-            inputSchema: zodToJsonSchema(verifyTaskSchema),
-          },
-          {
-            name: "delete_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/deleteTask.md"
-            ),
-            inputSchema: zodToJsonSchema(deleteTaskSchema),
-          },
-          {
-            name: "clear_all_tasks",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/clearAllTasks.md"
-            ),
-            inputSchema: zodToJsonSchema(clearAllTasksSchema),
-          },
-          {
-            name: "update_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/updateTask.md"
-            ),
-            inputSchema: zodToJsonSchema(updateTaskContentSchema),
-          },
-          {
-            name: "query_task",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/queryTask.md"
-            ),
-            inputSchema: zodToJsonSchema(queryTaskSchema),
-          },
-          {
-            name: "get_task_detail",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/getTaskDetail.md"
-            ),
-            inputSchema: zodToJsonSchema(getTaskDetailSchema),
-          },
-          {
-            name: "process_thought",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/processThought.md"
-            ),
-            inputSchema: zodToJsonSchema(processThoughtSchema),
-          },
-          {
-            name: "init_project_rules",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/initProjectRules.md"
-            ),
-            inputSchema: zodToJsonSchema(initProjectRulesSchema),
-          },
-          {
-            name: "research_mode",
-            description: await loadPromptFromTemplate(
-              "toolsDescription/researchMode.md"
-            ),
-            inputSchema: zodToJsonSchema(researchModeSchema),
-          },
-        ],
-      };
+      const tools = [
+        {
+          name: "plan_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/planTask.md"
+          ),
+          inputSchema: zodToJsonSchema(planTaskSchema),
+        },
+        {
+          name: "analyze_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/analyzeTask.md"
+          ),
+          inputSchema: zodToJsonSchema(analyzeTaskSchema),
+        },
+        {
+          name: "reflect_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/reflectTask.md"
+          ),
+          inputSchema: zodToJsonSchema(reflectTaskSchema),
+        },
+        {
+          name: "split_tasks",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/splitTasks.md"
+          ),
+          inputSchema: zodToJsonSchema(splitTasksRawSchema),
+        },
+        {
+          name: "list_tasks",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/listTasks.md"
+          ),
+          inputSchema: zodToJsonSchema(listTasksSchema),
+        },
+        {
+          name: "execute_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/executeTask.md"
+          ),
+          inputSchema: zodToJsonSchema(executeTaskSchema),
+        },
+        {
+          name: "verify_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/verifyTask.md"
+          ),
+          inputSchema: zodToJsonSchema(verifyTaskSchema),
+        },
+        {
+          name: "delete_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/deleteTask.md"
+          ),
+          inputSchema: zodToJsonSchema(deleteTaskSchema),
+        },
+        {
+          name: "clear_all_tasks",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/clearAllTasks.md"
+          ),
+          inputSchema: zodToJsonSchema(clearAllTasksSchema),
+        },
+        {
+          name: "update_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/updateTask.md"
+          ),
+          inputSchema: zodToJsonSchema(updateTaskContentSchema),
+        },
+        {
+          name: "query_task",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/queryTask.md"
+          ),
+          inputSchema: zodToJsonSchema(queryTaskSchema),
+        },
+        {
+          name: "get_task_detail",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/getTaskDetail.md"
+          ),
+          inputSchema: zodToJsonSchema(getTaskDetailSchema),
+        },
+        {
+          name: "process_thought",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/processThought.md"
+          ),
+          inputSchema: zodToJsonSchema(processThoughtSchema),
+        },
+        {
+          name: "init_project_rules",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/initProjectRules.md"
+          ),
+          inputSchema: zodToJsonSchema(initProjectRulesSchema),
+        },
+        {
+          name: "research_mode",
+          description: await loadPromptFromTemplate(
+            "toolsDescription/researchMode.md"
+          ),
+          inputSchema: zodToJsonSchema(researchModeSchema),
+        },
+      ];
+
+      // 僅在 GUI 啟用時添加 open_web_gui 工具，並在描述中附帶地址
+      if (ENABLE_GUI) {
+        let guiUrl = "";
+        try {
+          const webGuiFile = await getWebGuiFilePath();
+          const content = await fs.readFile(webGuiFile, "utf-8");
+          const match = content.match(/\((https?:\/\/[^\s)]+)\)/);
+          if (match && match[1]) {
+            guiUrl = match[1];
+          }
+        } catch {}
+        // 回退：若文件尚未寫入，嘗試組裝基礎地址
+        if (!guiUrl && process.env.WEB_PORT) {
+          const lang = (process.env.TEMPLATES_USE === "zh" ? "zh-TW" : "en");
+          guiUrl = `http://localhost:${process.env.WEB_PORT}?lang=${lang}`;
+        }
+
+        const openWebGuiDescription = guiUrl
+          ? `Open the Task Manager Web GUI. URL: ${guiUrl}`
+          : `Open the Task Manager Web GUI. (Starting... URL will be available shortly)`;
+
+        tools.push({
+          name: "open_web_gui",
+          description: openWebGuiDescription,
+          inputSchema: zodToJsonSchema(openWebGuiSchema),
+        });
+      }
+
+      return { tools };
     });
 
     server.setRequestHandler(
@@ -345,6 +377,16 @@ async function main() {
                 );
               }
               return await researchMode(parsedArgs.data);
+            case "open_web_gui":
+              parsedArgs = await openWebGuiSchema.safeParseAsync(
+                request.params.arguments || {}
+              );
+              if (!parsedArgs.success) {
+                throw new Error(
+                  `Invalid arguments for tool ${request.params.name}: ${parsedArgs.error.message}`
+                );
+              }
+              return await openWebGui(parsedArgs.data);
             default:
               throw new Error(`Tool ${request.params.name} does not exist`);
           }
